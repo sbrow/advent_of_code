@@ -1,44 +1,36 @@
 const std = @import("std");
 
 const MAX_LINE_LENGTH = 14;
+const NUM_WIDTH = u32;
 
 pub fn main() !void {
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
     const stdin_file = std.io.getStdIn();
     var buf_reader = std.io.bufferedReader(stdin_file.reader());
     var in_stream = buf_reader.reader();
 
     var buf: [MAX_LINE_LENGTH]u8 = undefined;
 
-    var left: [1000]u64 = undefined;
+    var left: [1000]NUM_WIDTH = undefined;
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var right = std.AutoArrayHashMap(u64, u64).init(allocator);
+    var right = std.AutoArrayHashMap(NUM_WIDTH, NUM_WIDTH).init(allocator);
     defer right.deinit();
 
     var line_count: u16 = 0;
 
     while (try in_stream.readUntilDelimiterOrEof(&buf, '\n')) |line| {
-        const numbers = try parse_numbers(line);
+        const numbers = try parse_numbers(line, NUM_WIDTH);
 
         left[line_count] = numbers.left;
-        // std.debug.print("left: {any}\n", .{numbers.right});
 
-        const prev_count: u64 = right.get(numbers.right) orelse 0;
+        const prev_count = right.get(numbers.right) orelse 0;
         try right.put(numbers.right, prev_count + 1);
 
-        // std.debug.print("line: {}\n", .{line_count});
         line_count += 1;
     }
-
-    std.mem.sort(u64, &left, {}, comptime std.sort.asc(u64));
-    // std.debug.print("left: {any}\n", .{left});
-    // std.debug.print("right: {any}\n\n", .{right});
 
     var sum: u64 = 0;
     for (left) |l| {
@@ -48,7 +40,7 @@ pub fn main() !void {
     std.debug.print("{}", .{sum});
 }
 
-fn parse_numbers(line: []u8) !struct { left: u64, right: u64 } {
+fn parse_numbers(line: []u8, comptime T: type) !struct { left: T, right: T } {
     const result = take_while_digit(line);
     const left = result[0];
 
@@ -56,7 +48,7 @@ fn parse_numbers(line: []u8) !struct { left: u64, right: u64 } {
     const remaining = skip_until_digit(rest);
     const right = take_while_digit(remaining);
 
-    return .{ .left = try std.fmt.parseInt(u64, left, 10), .right = try std.fmt.parseInt(u64, right[0], 10) };
+    return .{ .left = try std.fmt.parseInt(T, left, 10), .right = try std.fmt.parseInt(T, right[0], 10) };
 }
 
 fn take_while_digit(rest: []u8) struct { []u8, []u8 } {
