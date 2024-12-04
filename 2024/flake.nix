@@ -52,7 +52,7 @@
           devShells.default = pkgs.mkShell
             {
               buildInputs = with pkgs; [
-                zig
+                unstable.zig
                 zls
               ];
             };
