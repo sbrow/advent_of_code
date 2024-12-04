@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const MAX_LINE_LENGTH = 14;
+const MAX_LINE_LENGTH = 24;
 
 pub fn main() !void {
     // stdout is for the actual output of your application, for example if you
@@ -12,51 +12,56 @@ pub fn main() !void {
 
     var buf: [MAX_LINE_LENGTH]u8 = undefined;
 
-    var left: [1000]u64 = undefined;
-
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var right = std.AutoArrayHashMap(u64, u64).init(allocator);
-    defer right.deinit();
-
-    var line_count: u16 = 0;
+    var sum: u32 = 0;
 
     while (try in_stream.readUntilDelimiterOrEof(&buf, '\n')) |line| {
-        const numbers = try parse_numbers(line);
-
-        left[line_count] = numbers.left;
-        // std.debug.print("left: {any}\n", .{numbers.right});
-
-        const prev_count: u64 = right.get(numbers.right) orelse 0;
-        try right.put(numbers.right, prev_count + 1);
-
-        // std.debug.print("line: {}\n", .{line_count});
-        line_count += 1;
-    }
-
-    std.mem.sort(u64, &left, {}, comptime std.sort.asc(u64));
-    // std.debug.print("left: {any}\n", .{left});
-    // std.debug.print("right: {any}\n\n", .{right});
-
-    var sum: u64 = 0;
-    for (left) |l| {
-        sum += l * (right.get(l) orelse 0);
+        if (is_safe(line)) {
+            sum += 1;
+        }
     }
 
     std.debug.print("{}", .{sum});
 }
 
-fn parse_numbers(line: []u8) !struct { left: u64, right: u64 } {
-    const result = take_while_digit(line);
-    const left = result[0];
+fn is_safe(report: []u8) bool {
+    const results = delimited(
+        take_while_digit,
+        skip_until_digit,
+        take_while_digit,
+    )(report);
 
-    const rest = result[1];
-    const remaining = skip_until_digit(rest);
-    const right = take_while_digit(remaining);
+    // const results = take_while_digit(report);
+    // const first = results[0];
+    // const rest = skip_until_digit(results[1]);
 
-    return .{ .left = try std.fmt.parseInt(u64, left, 10), .right = try std.fmt.parseInt(u64, right[0], 10) };
+    // const second_results = take_while_digit(rest);
+    // const second = second_results[0];
+
+    std.debug.print("({s}, {s})...{s}\n", .{ results[0][1], results[0][2], results[1] });
+
+    return true;
+}
+
+fn delimited(comptime first: Parser, comptime second: Parser, comptime third: Parser) Parser {
+    const result = struct {
+        fn invoke(bytes: []u8) struct { [2][]u8, []u8 } {
+            const results = first(bytes);
+            const first_result = results[0];
+            const rest = second(results[1]);
+
+            const second_results = third(rest);
+            const second_result = second_results[0];
+            const the_rest = second_results[1];
+
+            return [2][]u8{ .{ first_result, second_result }, the_rest };
+        }
+    };
+
+    return result.invoke;
+}
+
+fn Parser(comptime T: type) type {
+    return fn ([]u8) struct { T, []u8 };
 }
 
 fn take_while_digit(rest: []u8) struct { []u8, []u8 } {
