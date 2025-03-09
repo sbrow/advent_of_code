@@ -3,7 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/release-24.11";
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/36fd87baa9083f34f7f5027900b62ee6d09b1f2f";
     # dolt.url = "github:sbrow/dolt";
     # phps.url = "github:fossar/nix-phps";
     # phps.inputs.nixpkgs.follows = "nixpkgs";
@@ -54,6 +54,8 @@
               buildInputs = with pkgs; [
                 unstable.zig
                 zls
+
+                zeromq
               ];
             };
         };
